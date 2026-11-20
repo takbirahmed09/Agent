@@ -1,24 +1,57 @@
-- name: Fix sdkmanager path
-  run: |
-    SDK_ROOT=~/.buildozer/android/platform/android-sdk
-    
-    # ১. tools/bin এ ফেক স্ক্রিপ্ট তৈরি করা (আগের মতোই)
-    mkdir -p $SDK_ROOT/tools/bin
-    cat << 'EOF' > $SDK_ROOT/tools/bin/sdkmanager
-    #!/bin/bash
-    SDK_ROOT=~/.buildozer/android/platform/android-sdk
-    ACTUAL_SDKMANAGER=$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
-    exec "$ACTUAL_SDKMANAGER" "$@"
-    EOF
-    chmod +x $SDK_ROOT/tools/bin/sdkmanager
-    
-    # ২. ম্যানুয়ালি সঠিক cmdline-tools ডাউনলোড এবং আনজিপ করা
-    mkdir -p $SDK_ROOT/cmdline-tools
-    wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
-    unzip -q /tmp/cmdline-tools.zip -d $SDK_ROOT/cmdline-tools
-    
-    # ৩. আনজিপ করা ফোল্ডারের নাম latest এ পরিবর্তন করা
-    mv $SDK_ROOT/cmdline-tools/cmdline-tools $SDK_ROOT/cmdline-tools/latest
-    
-    # ৪. সঠিক ফাইল আছে কিনা যাচাই করা
-    ls -l $SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+name: Build Kivy APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip openjdk-17-jdk python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev wget
+
+      - name: Install Buildozer
+        run: |
+          pip install buildozer cython
+
+      - name: Accept Android SDK licenses
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
+          echo -e "\n8933bad161af4b6a5b573652ffc7aaf3aee85a47" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
+          echo -e "\nd56f5187479451eabf01fb78af6dfcb131b33910" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
+
+      - name: Fix sdkmanager path and download cmdline-tools
+        run: |
+          SDK_ROOT=~/.buildozer/android/platform/android-sdk
+          
+          mkdir -p $SDK_ROOT/tools/bin
+          cat << 'EOF' > $SDK_ROOT/tools/bin/sdkmanager
+          #!/bin/bash
+          SDK_ROOT=~/.buildozer/android/platform/android-sdk
+          ACTUAL_SDKMANAGER=$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
+          exec "$ACTUAL_SDKMANAGER" "$@"
+          EOF
+          chmod +x $SDK_ROOT/tools/bin/sdkmanager
+          
+          mkdir -p $SDK_ROOT/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
+          unzip -q /tmp/cmdline-tools.zip -d $SDK_ROOT/cmdline-tools
+          mv $SDK_ROOT/cmdline-tools/cmdline-tools $SDK_ROOT/cmdline-tools/latest
+
+      - name: Build APK
+        run: |
+          buildozer android debug
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kivy-apk
+          path: bin/*.apk
