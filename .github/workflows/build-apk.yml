@@ -28,9 +28,16 @@ jobs:
           echo -e "\n8933bad161af4b6a5b573652ffc7aaf3aee85a47" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
           echo -e "\nd56f5187479451eabf01fb78af6dfcb131b33910" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
 
+      - name: Fix sdkmanager path
+        run: |
+          mkdir -p ~/.buildozer/android/platform/android-sdk/cmdline-tools
+          if [ ! -d ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest ]; then
+            ln -s ~/.buildozer/android/platform/android-sdk/cmdline-tools ~/.buildozer/android/platform/android-sdk/cmdline-tools/latest
+          fi
+
       - name: Build APK
         run: |
-          yes | buildozer android debug
+          buildozer android debug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
