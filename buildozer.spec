@@ -1,67 +1,47 @@
-[app]
+name: Build Kivy APK
+on: [push, workflow_dispatch]
 
-# (str) অ্যাপ্লিকেশনের শিরোনাম
-title = MyApp
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-# (str) প্যাকেজের নাম (শুধুমাত্র ছোট হাতের অক্ষর এবং সংখ্যা)
-package.name = myapp
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
-# (str) প্যাকেজ ডোমেইন (যেমন org.yourname)
-package.domain = org.myapp
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-# (str) অ্যাপ্লিকেশনের সোর্স কোড ডিরেক্টরি
-source.dir = .
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git zip unzip python3-pip autoconf libtool pkg-config zlib1g-dev libncurses5-dev libncursesw5-dev cmake libffi-dev libssl-dev wget
 
-# (list) সোর্স ডিরেক্টরিতে অন্তর্ভুক্ত ফাইলের এক্সটেনশন
-source.include_exts = py,png,jpg,kv,atlas
+      - name: Accept Android SDK Licenses
+        run: |
+          mkdir -p "$HOME/.buildozer/android/platform/android-sdk/licenses"
+          printf "8933bad161af4178b1185d1a37fbf41ea5269c55\nd56f5187479451eabf01fb78af6dfcb131a6481e\n24333f8a63b6825ea9c5514f83c2829b004d1fee" > "$HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-license"
+          printf "84831b9409646a918e30573bab4c9c91346d8abd\n504667f4c0de7af1a06de9f4b1727b84351f2910" > "$HOME/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license"
 
-# (list) বাদ দেওয়া ফাইল/ফোল্ডার
-source.exclude_dirs = tests, bin, venv, .github, .backups
+      - name: Install Buildozer
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.36
 
-# (str) অ্যাপ্লিকেশনের সংস্করণ
-version = 0.1
+      - name: Build APK
+        run: |
+          buildozer android debug
 
-# (list) অ্যাপ্লিকেশনের নির্ভরতা (requirements)
-# main.py তে kivy এবং filetype ব্যবহার করা হয়েছে, তাই এখানে দুটোই থাকতে হবে
-requirements = python3,kivy,filetype
-
-# (str) অ্যাপ্লিকেশনের এন্ট্রি পয়েন্ট (ডিফল্ট main.py)
-# যদি আপনার এন্ট্রি ফাইলের নাম main.py হয়, তাহলে এই লাইনটি দরকার নেই
-
-# (list) অ্যান্ড্রয়েড আর্কিটেকচার (arm64-v8a আধুনিক ফোনের জন্য, armeabi-v7a পুরোনো ফোনের জন্য)
-android.archs = arm64-v8a, armeabi-v7a
-
-# (int) Android API লেভেল (৩৩ সাধারণত সবচেয়ে স্থিতিশীল)
-android.api = 33
-
-# (int) সর্বনিম্ন API লেভেল (২১ মানে Android 5.0 এবং তার উপরে সমর্থিত)
-android.minapi = 21
-
-# (str) Android NDK সংস্করণ
-android.ndk = 25b
-
-# (bool) স্বয়ংক্রিয়ভাবে Android SDK লাইসেন্স গ্রহণ করুন (অত্যন্ত গুরুত্বপূর্ণ!)
-android.accept_sdk_license = True
-
-# (list) অ্যান্ড্রয়েড অনুমতি (INTERNET যোগ করা হয়েছে ভবিষ্যতে নেটওয়ার্ক ব্যবহারের জন্য)
-android.permissions = INTERNET
-
-# (str) অ্যাপের আইকন (যদি না থাকে তাহলে ডিফল্ট Kivy আইকন ব্যবহার হবে)
-# icon.filename = %(source.dir)s/data/icon.png
-
-# (bool) সম্পূর্ণ স্ক্রিন মোড সক্রিয় করুন (ঐচ্ছিক)
-# fullscreen = 0
-
-[buildozer]
-
-# (int) লগ লেভেল (২ মানে ত্রুটি এবং সতর্কতা)
-log_level = 2
-
-# (str) বিল্ড ডিরেক্টরি
-build_dir = .buildozer
-
-# (str) বিল্ড করা APK এর আউটপুট ডিরেক্টরি
-bin_dir = ./bin
-
-# (bool) প্রতিবার বিল্ড করার সময় প্যাকেজ পুনরায় ডাউনলোড করবেন কিনা
-# warn_on_root = 0
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kivy-apk
+          path: bin/*.apk
+          
