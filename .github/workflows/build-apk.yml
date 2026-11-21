@@ -13,6 +13,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install system dependencies
         run: |
           sudo apt-get update
@@ -21,30 +24,6 @@ jobs:
       - name: Install Buildozer
         run: |
           pip install buildozer cython
-
-      - name: Accept Android SDK licenses
-        run: |
-          mkdir -p ~/.buildozer/android/platform/android-sdk/licenses
-          echo -e "\n8933bad161af4b6a5b573652ffc7aaf3aee85a47" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-license
-          echo -e "\nd56f5187479451eabf01fb78af6dfcb131b33910" > ~/.buildozer/android/platform/android-sdk/licenses/android-sdk-preview-license
-
-      - name: Fix sdkmanager path and download cmdline-tools
-        run: |
-          SDK_ROOT=~/.buildozer/android/platform/android-sdk
-          
-          mkdir -p $SDK_ROOT/tools/bin
-          cat << 'EOF' > $SDK_ROOT/tools/bin/sdkmanager
-          #!/bin/bash
-          SDK_ROOT=~/.buildozer/android/platform/android-sdk
-          ACTUAL_SDKMANAGER=$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager
-          exec "$ACTUAL_SDKMANAGER" "$@"
-          EOF
-          chmod +x $SDK_ROOT/tools/bin/sdkmanager
-          
-          mkdir -p $SDK_ROOT/cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O /tmp/cmdline-tools.zip
-          unzip -q /tmp/cmdline-tools.zip -d $SDK_ROOT/cmdline-tools
-          mv $SDK_ROOT/cmdline-tools/cmdline-tools $SDK_ROOT/cmdline-tools/latest
 
       - name: Build APK
         run: |
